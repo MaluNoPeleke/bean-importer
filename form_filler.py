@@ -40,10 +40,32 @@ async def fill_and_submit(bean: BeanData) -> str:
     await _fill_notes(page, bean)
 
     await page.click('button[type="submit"]')
-    await page.wait_for_selector("#resultsArea:not(.hidden)", timeout=10000)
+    await page.wait_for_selector("#resultsArea:not(.hidden)", timeout=15000)
 
-    link = await page.inner_text("#generatedLinkDisplay")
-    logger.info("Generated import link for '%s'", bean.coffee_name)
+    await page.wait_for_function(
+        "() => { const a = document.getElementById('openLinkBtn'); "
+        "return a && a.href && a.href !== window.location.href + '#' "
+        "&& !a.href.endsWith('#'); }",
+        timeout=15000,
+    )
+
+    link = await page.get_attribute("#openLinkBtn", "href")
+    logger.info("Generated import link for '%s' (len=%d)", bean.coffee_name, len(link or ""))
+
+    try:
+        async with page.context.expect_page(timeout=5000) as new_page_info:
+            await page.click("#openLinkBtn", modifiers=["ControlOrMeta"])
+        new_page = await new_page_info.value
+        await new_page.wait_for_load_state("domcontentloaded", timeout=10000)
+        logger.info("Opened import link in new tab: %s", new_page.url)
+    except Exception as e:
+        logger.warning("Could not auto-open import link, fallback to direct goto: %s", e)
+        try:
+            new_page = await browser.new_page()
+            await new_page.goto(link, wait_until="domcontentloaded", timeout=15000)
+        except Exception as e2:
+            logger.warning("Fallback goto also failed: %s", e2)
+
     return link
 
 
