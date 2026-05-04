@@ -16,3 +16,17 @@ Lokale Web-App, die aus Kaffeeshop-URLs automatisch Bohnendaten extrahiert und d
    uvicorn main:app --reload --port 8000
    ```
 5. Browser öffnen: http://localhost:8000
+
+## Autostart bei Anmeldung (Windows)
+
+Damit der Server nach jedem Login automatisch im Hintergrund läuft, gibt es ein PowerShell-Script, das einen Scheduled Task registriert:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_task.ps1
+```
+
+- Trigger: bei Benutzer-Anmeldung
+- Aktion: `python -m uvicorn main:app --host 127.0.0.1 --port 8000` ohne Konsolenfenster
+- Logs: `logs\server.log` (vorherige Version wird beim Start zu `logs\server.log.1` rotiert)
+- Sofort starten ohne Reboot: `Start-ScheduledTask -TaskName BeanImporter`
+- Wieder entfernen: `powershell -ExecutionPolicy Bypass -File scripts\uninstall_task.ps1`
