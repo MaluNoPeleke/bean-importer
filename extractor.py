@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-import anthropic
+import litellm
 from dotenv import load_dotenv
 
 from models import BeanData
@@ -12,7 +12,7 @@ from researcher import research_coffee
 load_dotenv(Path(__file__).parent / ".env", override=True)
 logger = logging.getLogger(__name__)
 
-client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+LLM_MODEL = os.environ.get("LLM_MODEL", "anthropic/claude-opus-4-7")
 
 SYSTEM_PROMPT = """\
 Du bist ein Kaffee-Experte und Datenextraktions-Spezialist. \
@@ -119,15 +119,17 @@ async def extract_bean_data(html: str, url: str) -> BeanData:
         f"=== WEB-RECHERCHE ERGEBNISSE ===\n{research_context}\n"
     )
 
-    response = client.messages.create(
-        model="claude-opus-4-7",
+    response = await litellm.acompletion(
+        model=LLM_MODEL,
         max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
     )
 
-    raw = response.content[0].text.strip()
-    logger.info("Claude raw response length: %d chars", len(raw))
+    raw = response.choices[0].message.content.strip()
+    logger.info("LLM raw response length: %d chars (model=%s)", len(raw), LLM_MODEL)
 
     try:
         data = json.loads(raw)
@@ -185,13 +187,15 @@ async def _retry_with_feedback(original_prompt: str, previous_response: str, err
         f"{original_prompt}"
     )
 
-    response = client.messages.create(
-        model="claude-opus-4-7",
+    response = await litellm.acompletion(
+        model=LLM_MODEL,
         max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": retry_prompt}],
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": retry_prompt},
+        ],
     )
 
-    raw = response.content[0].text.strip()
+    raw = response.choices[0].message.content.strip()
     data = json.loads(raw)
     return BeanData(**data)

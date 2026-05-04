@@ -4,7 +4,7 @@ httpx
 beautifulsoup4
 lxml
 playwright
-anthropic
+litellm
 pydantic
 python-dotenv
 duckduckgo-search

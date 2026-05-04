@@ -5,7 +5,7 @@ Lokale Web-App, die aus Kaffeeshop-URLs automatisch Bohnendaten extrahiert und d
 ## Setup
 
 1. Python 3.12 installieren
-2. `.env` anlegen (siehe `.env.example`) und `ANTHROPIC_API_KEY` eintragen
+2. `.env` anlegen (siehe `.env.example`): `LLM_MODEL` setzen und den passenden Provider-Key eintragen (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` oder `GEMINI_API_KEY`)
 3. Dependencies installieren:
    ```
    pip install -r requirements.txt
