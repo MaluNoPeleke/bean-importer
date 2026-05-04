@@ -25,4 +25,9 @@ $banner | Out-File -FilePath $logFile -Encoding utf8
 Set-Location $projectRoot
 
 # Start uvicorn, redirect both stdout and stderr to the log file.
-& $python -m uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info *>> $logFile
+# uvicorn logs to stderr; with ErrorActionPreference=Stop PowerShell would treat
+# each stderr line as a NativeCommandError and abort the script, killing uvicorn.
+# Switch to Continue and merge stderr into stdout before appending to the log.
+$ErrorActionPreference = "Continue"
+& $python -m uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info 2>&1 |
+    Out-File -FilePath $logFile -Encoding utf8 -Append

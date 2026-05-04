@@ -5,18 +5,18 @@
 $ErrorActionPreference = "Stop"
 
 $taskName = "BeanImporter"
-$startScript = Join-Path $PSScriptRoot "start_server.ps1"
+$vbsLauncher = Join-Path $PSScriptRoot "start_server.vbs"
 
-if (-not (Test-Path $startScript)) {
-    throw "start_server.ps1 not found at $startScript"
+if (-not (Test-Path $vbsLauncher)) {
+    throw "start_server.vbs not found at $vbsLauncher"
 }
 
-# Hidden launcher: powershell.exe with -WindowStyle Hidden runs the script
-# without flashing a console window. Output of the script itself is redirected
-# inside start_server.ps1 to logs\server.log.
+# Truly invisible launcher: wscript.exe has no console window of its own and
+# starts powershell.exe with Run(..., 0) hidden, so there is no flash at logon.
+# The .vbs delegates to start_server.ps1, which redirects output to logs\server.log.
 $action = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$startScript`""
+    -Execute "wscript.exe" `
+    -Argument "`"$vbsLauncher`""
 
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 
