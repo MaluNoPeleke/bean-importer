@@ -119,17 +119,7 @@ async def extract_bean_data(html: str, url: str) -> BeanData:
         f"=== WEB-RECHERCHE ERGEBNISSE ===\n{research_context}\n"
     )
 
-    response = await litellm.acompletion(
-        model=LLM_MODEL,
-        max_tokens=2000,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-
-    raw = response.choices[0].message.content.strip()
-    logger.info("LLM raw response length: %d chars (model=%s)", len(raw), LLM_MODEL)
+    raw = await _call_llm(SYSTEM_PROMPT, user_prompt)
 
     try:
         data = json.loads(raw)
@@ -137,6 +127,69 @@ async def extract_bean_data(html: str, url: str) -> BeanData:
     except (json.JSONDecodeError, ValueError) as e:
         logger.warning("First attempt failed (%s), retrying with feedback", e)
         return await _retry_with_feedback(user_prompt, raw, str(e))
+
+
+def _provider_kwargs() -> dict:
+    """Provider-spezifische Parameter, damit alle 3 Modelle gleich funktionieren."""
+    model = LLM_MODEL.lower()
+    kwargs: dict = {"max_tokens": 8000}
+
+    if model.startswith("gemini/"):
+        # Gemini 2.5 nutzt interne Thinking-Tokens, die gegen max_tokens zaehlen.
+        # Budget begrenzen, damit fuer JSON-Output genug uebrig bleibt.
+        kwargs["thinking"] = {"type": "enabled", "budget_tokens": 1024}
+        kwargs["response_format"] = {"type": "json_object"}
+    elif model.startswith("openai/") or model.startswith("gpt-"):
+        kwargs["response_format"] = {"type": "json_object"}
+    # Anthropic: kein response_format noetig, Prompt erzwingt bereits JSON.
+
+    return kwargs
+
+
+async def _call_llm(system_prompt: str, user_prompt: str) -> str:
+    from fastapi import HTTPException
+
+    try:
+        response = await litellm.acompletion(
+            model=LLM_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            **_provider_kwargs(),
+        )
+    except Exception as e:
+        logger.exception("LLM-Aufruf fehlgeschlagen (model=%s)", LLM_MODEL)
+        raise HTTPException(
+            status_code=502,
+            detail=f"LLM-Aufruf fehlgeschlagen ({LLM_MODEL}): {e}",
+        )
+
+    choice = response.choices[0]
+    content = getattr(choice.message, "content", None)
+    finish_reason = getattr(choice, "finish_reason", None)
+
+    if not content:
+        logger.error(
+            "LLM lieferte leere Antwort (model=%s, finish_reason=%s)",
+            LLM_MODEL, finish_reason,
+        )
+        hint = ""
+        if finish_reason in ("length", "max_tokens"):
+            hint = " (Token-Limit erreicht — evtl. max_tokens erhoehen oder Thinking-Budget kuerzen)"
+        elif finish_reason in ("content_filter", "safety"):
+            hint = " (Safety-Filter hat die Antwort blockiert)"
+        raise HTTPException(
+            status_code=502,
+            detail=f"LLM ({LLM_MODEL}) lieferte keine Antwort [finish_reason={finish_reason}]{hint}",
+        )
+
+    raw = content.strip()
+    logger.info(
+        "LLM raw response: %d chars (model=%s, finish_reason=%s)",
+        len(raw), LLM_MODEL, finish_reason,
+    )
+    return raw
 
 
 def _extract_product_hint(html: str, url: str) -> dict:
@@ -187,15 +240,6 @@ async def _retry_with_feedback(original_prompt: str, previous_response: str, err
         f"{original_prompt}"
     )
 
-    response = await litellm.acompletion(
-        model=LLM_MODEL,
-        max_tokens=2000,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": retry_prompt},
-        ],
-    )
-
-    raw = response.choices[0].message.content.strip()
+    raw = await _call_llm(SYSTEM_PROMPT, retry_prompt)
     data = json.loads(raw)
     return BeanData(**data)
