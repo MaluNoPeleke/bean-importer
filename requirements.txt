@@ -3,8 +3,8 @@ uvicorn[standard]
 httpx
 beautifulsoup4
 lxml
-playwright
 litellm
 pydantic
 python-dotenv
 duckduckgo-search
+protobuf

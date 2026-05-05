@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from models import BeanData
 from scraper import scrape
 from extractor import extract_bean_data
-from form_filler import fill_and_submit
+from share_link import build_share_link
 
 logging.basicConfig(level=logging.INFO)
 
@@ -43,5 +43,5 @@ async def extract(req: ExtractRequest):
 
 @app.post("/fill")
 async def fill(bean: BeanData):
-    link = await fill_and_submit(bean)
+    link = build_share_link(bean)
     return {"status": "done", "name": bean.coffee_name, "link": link}
