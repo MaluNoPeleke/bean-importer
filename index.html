@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BeanImporter</title>
+  <script src="/static/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; background: #fafafa; }
@@ -158,6 +159,12 @@
     </div>
   </div>
 
+  <div id="qrArea" style="display:none;text-align:center;margin-top:1.5rem;padding:1.5rem;background:#fff;border:1px solid #e5e7eb;border-radius:8px">
+    <h2 style="border:none;color:#1a1a1a;margin:0 0 .75rem">Import-QR für dein Handy</h2>
+    <p style="color:#6b7280;font-size:.85rem;margin-bottom:1rem">Mit der Kamera scannen — Beanconqueror-App öffnet sich automatisch.</p>
+    <div id="qrcode" style="display:inline-block"></div>
+  </div>
+
   <script>
     let beanData = null;
 
@@ -304,6 +311,25 @@
       };
     }
 
+    function renderQr(link) {
+      const area = document.getElementById('qrArea');
+      const target = document.getElementById('qrcode');
+      target.innerHTML = '';
+      try {
+        new QRCode(target, {
+          text: link,
+          width: 600,
+          height: 600,
+          correctLevel: QRCode.CorrectLevel.L,
+        });
+        area.style.display = 'block';
+        area.scrollIntoView({ behavior: 'smooth' });
+      } catch (e) {
+        console.error('QR render failed:', e);
+        area.style.display = 'none';
+      }
+    }
+
     async function doFill() {
       const data = collectFormData();
       if (!data.coffee_name) { alert('Coffee Name ist Pflichtfeld.'); return; }
@@ -329,6 +355,7 @@
         const result = await res.json();
         if (result.link) {
           status.innerHTML = 'Import-Link generiert: <a href="' + esc(result.link) + '" target="_blank" style="color:#2563eb;word-break:break-all">' + esc(result.link).substring(0, 80) + '…</a>';
+          renderQr(result.link);
         } else {
           status.textContent = 'Beanconqueror-Formular wurde im Browser ausgefüllt.';
         }
