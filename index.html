@@ -413,19 +413,65 @@
           body: JSON.stringify({ url })
         });
         if (!res.ok) {
-          const body = await res.text();
-          throw new Error(`HTTP ${res.status}: ${body}`);
+          await handleApiError(res, error);
+          return;
         }
         beanData = await res.json();
         populateForm(beanData);
         document.getElementById('formArea').style.display = 'block';
         status.textContent = '';
       } catch (e) {
-        error.textContent = 'Fehler: ' + e.message;
-        error.style.display = 'block';
-        status.textContent = '';
+        showFriendlyError(e, error);
       } finally {
         btn.disabled = false;
+        if (error.style.display === 'block') status.textContent = '';
+      }
+    }
+
+    async function handleApiError(res, errorEl) {
+      let detail = null;
+      try {
+        const data = await res.json();
+        detail = data.detail;
+      } catch (_) { /* not JSON */ }
+
+      errorEl.innerHTML = '';
+      errorEl.style.display = 'block';
+
+      if (detail && typeof detail === 'object') {
+        const msg = document.createElement('div');
+        msg.textContent = detail.message || 'Unbekannter Fehler.';
+        errorEl.appendChild(msg);
+
+        if (detail.action === 'open_settings') {
+          const btn = document.createElement('button');
+          btn.className = 'btn-primary btn-sm';
+          btn.style.marginTop = '.5rem';
+          btn.textContent = 'Einstellungen öffnen';
+          btn.onclick = () => openSettings();
+          errorEl.appendChild(btn);
+        } else if (detail.action === 'retry_or_switch_model' || detail.action === 'retry_later') {
+          const hint = document.createElement('div');
+          hint.style.fontSize = '.8rem';
+          hint.style.marginTop = '.25rem';
+          hint.style.opacity = '.8';
+          hint.textContent = detail.action === 'retry_later'
+            ? 'Bitte erneut versuchen' + (detail.retry_after ? ` in ${detail.retry_after}s.` : '.')
+            : 'Erneut versuchen oder in den Einstellungen ein anderes Modell wählen.';
+          errorEl.appendChild(hint);
+        }
+      } else {
+        errorEl.textContent = `Fehler (HTTP ${res.status}): ${typeof detail === 'string' ? detail : 'siehe Server-Log'}`;
+      }
+    }
+
+    function showFriendlyError(e, errorEl) {
+      errorEl.innerHTML = '';
+      errorEl.style.display = 'block';
+      if (e instanceof TypeError) {
+        errorEl.textContent = 'Server nicht erreichbar — läuft die BeanImporter-Task?';
+      } else {
+        errorEl.textContent = 'Fehler: ' + e.message;
       }
     }
 
@@ -595,8 +641,8 @@
           body: JSON.stringify(data)
         });
         if (!res.ok) {
-          const body = await res.text();
-          throw new Error(`HTTP ${res.status}: ${body}`);
+          await handleApiError(res, error);
+          return;
         }
         const result = await res.json();
         if (result.link) {
@@ -606,11 +652,10 @@
           status.textContent = 'Beanconqueror-Formular wurde im Browser ausgefüllt.';
         }
       } catch (e) {
-        error.textContent = 'Fehler: ' + e.message;
-        error.style.display = 'block';
-        status.textContent = '';
+        showFriendlyError(e, error);
       } finally {
         btn.disabled = false;
+        if (error.style.display === 'block') status.textContent = '';
       }
     }
   </script>

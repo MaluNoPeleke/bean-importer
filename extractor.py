@@ -161,11 +161,37 @@ async def _call_llm(system_prompt: str, user_prompt: str) -> str:
             ],
             **_provider_kwargs(),
         )
+    except litellm.AuthenticationError as e:
+        logger.warning("LLM auth failed (model=%s): %s", model, e)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "auth",
+                "action": "open_settings",
+                "message": f"API-Key wurde von {model} abgelehnt. Bitte in den Einstellungen prüfen.",
+            },
+        )
+    except litellm.RateLimitError as e:
+        logger.warning("LLM rate limited (model=%s): %s", model, e)
+        retry_after = getattr(e, "retry_after", None)
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limit",
+                "action": "retry_later",
+                "retry_after": retry_after,
+                "message": f"Rate-Limit erreicht für {model}. Bitte kurz warten oder anderes Modell wählen.",
+            },
+        )
     except Exception as e:
         logger.exception("LLM-Aufruf fehlgeschlagen (model=%s)", model)
         raise HTTPException(
             status_code=502,
-            detail=f"LLM-Aufruf fehlgeschlagen ({model}): {e}",
+            detail={
+                "error": "llm_failed",
+                "action": "retry_or_switch_model",
+                "message": f"LLM-Aufruf fehlgeschlagen ({model}): {e}",
+            },
         )
 
     choice = response.choices[0]
@@ -184,7 +210,11 @@ async def _call_llm(system_prompt: str, user_prompt: str) -> str:
             hint = " (Safety-Filter hat die Antwort blockiert)"
         raise HTTPException(
             status_code=502,
-            detail=f"LLM ({model}) lieferte keine Antwort [finish_reason={finish_reason}]{hint}",
+            detail={
+                "error": "empty_response",
+                "action": "retry_or_switch_model",
+                "message": f"LLM ({model}) lieferte keine Antwort [finish_reason={finish_reason}]{hint}",
+            },
         )
 
     raw = content.strip()
