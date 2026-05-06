@@ -12,7 +12,9 @@ from researcher import research_coffee
 load_dotenv(Path(__file__).parent / ".env", override=True)
 logger = logging.getLogger(__name__)
 
-LLM_MODEL = os.environ.get("LLM_MODEL", "anthropic/claude-opus-4-7")
+
+def _current_model() -> str:
+    return os.environ.get("LLM_MODEL", "anthropic/claude-opus-4-7")
 
 SYSTEM_PROMPT = """\
 Du bist ein Kaffee-Experte und Datenextraktions-Spezialist. \
@@ -131,7 +133,7 @@ async def extract_bean_data(html: str, url: str) -> BeanData:
 
 def _provider_kwargs() -> dict:
     """Provider-spezifische Parameter, damit alle 3 Modelle gleich funktionieren."""
-    model = LLM_MODEL.lower()
+    model = _current_model().lower()
     kwargs: dict = {"max_tokens": 8000}
 
     if model.startswith("gemini/"):
@@ -149,9 +151,10 @@ def _provider_kwargs() -> dict:
 async def _call_llm(system_prompt: str, user_prompt: str) -> str:
     from fastapi import HTTPException
 
+    model = _current_model()
     try:
         response = await litellm.acompletion(
-            model=LLM_MODEL,
+            model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -159,10 +162,10 @@ async def _call_llm(system_prompt: str, user_prompt: str) -> str:
             **_provider_kwargs(),
         )
     except Exception as e:
-        logger.exception("LLM-Aufruf fehlgeschlagen (model=%s)", LLM_MODEL)
+        logger.exception("LLM-Aufruf fehlgeschlagen (model=%s)", model)
         raise HTTPException(
             status_code=502,
-            detail=f"LLM-Aufruf fehlgeschlagen ({LLM_MODEL}): {e}",
+            detail=f"LLM-Aufruf fehlgeschlagen ({model}): {e}",
         )
 
     choice = response.choices[0]
@@ -172,7 +175,7 @@ async def _call_llm(system_prompt: str, user_prompt: str) -> str:
     if not content:
         logger.error(
             "LLM lieferte leere Antwort (model=%s, finish_reason=%s)",
-            LLM_MODEL, finish_reason,
+            model, finish_reason,
         )
         hint = ""
         if finish_reason in ("length", "max_tokens"):
@@ -181,15 +184,41 @@ async def _call_llm(system_prompt: str, user_prompt: str) -> str:
             hint = " (Safety-Filter hat die Antwort blockiert)"
         raise HTTPException(
             status_code=502,
-            detail=f"LLM ({LLM_MODEL}) lieferte keine Antwort [finish_reason={finish_reason}]{hint}",
+            detail=f"LLM ({model}) lieferte keine Antwort [finish_reason={finish_reason}]{hint}",
         )
 
     raw = content.strip()
     logger.info(
         "LLM raw response: %d chars (model=%s, finish_reason=%s)",
-        len(raw), LLM_MODEL, finish_reason,
+        len(raw), model, finish_reason,
     )
     return raw
+
+
+async def probe_llm(model: str, api_key: str, key_env: str) -> tuple[bool, str]:
+    """Tiny probe call to validate provider + key. Passes the key directly so
+    concurrent probes/extractions don't race on os.environ."""
+    kwargs: dict = {
+        "model": model,
+        "messages": [{"role": "user", "content": "Antworte nur mit: OK"}],
+        "max_tokens": 32,
+        "api_key": api_key,
+    }
+    # Gemini 2.5 reserves tokens for internal "thinking" — without a budget
+    # cap, the 32-token reply ceiling is exhausted before any visible output.
+    if model.lower().startswith("gemini/"):
+        kwargs["thinking"] = {"type": "enabled", "budget_tokens": 0}
+
+    try:
+        response = await litellm.acompletion(**kwargs)
+        choice = response.choices[0]
+        content = (getattr(choice.message, "content", "") or "").strip()
+        finish_reason = getattr(choice, "finish_reason", None)
+        if not content:
+            return False, f"Leere Antwort (finish_reason={finish_reason})"
+        return True, content[:50]
+    except Exception as e:
+        return False, str(e)[:300]
 
 
 def _extract_product_hint(html: str, url: str) -> dict:

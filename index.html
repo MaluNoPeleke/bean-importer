@@ -61,11 +61,47 @@
       .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
       .actions { flex-direction: column; }
     }
+
+    .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .5rem; gap: 1rem; }
+    .icon-btn { background: transparent; border: 1px solid #e5e7eb; padding: .4rem .6rem; border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; color: #6b7280; }
+    .icon-btn:hover { background: #f3f4f6; color: #1a1a1a; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: flex-start; justify-content: center; padding: 2rem 1rem; z-index: 100; overflow-y: auto; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: #fff; border-radius: 10px; padding: 1.5rem; width: 100%; max-width: 520px; box-shadow: 0 20px 50px rgba(0,0,0,.2); }
+    .modal h2 { border: none; color: #1a1a1a; margin: 0 0 .25rem; font-size: 1.25rem; padding: 0; }
+    .modal .modal-sub { color: #6b7280; font-size: .9rem; margin-bottom: 1.25rem; }
+    .provider-tabs { display: flex; gap: .25rem; margin-bottom: 1rem; background: #f3f4f6; padding: .25rem; border-radius: 8px; }
+    .provider-tabs button { flex: 1; padding: .5rem; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: .9rem; font-weight: 500; color: #6b7280; }
+    .provider-tabs button.active { background: #fff; color: #92400e; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .key-link { font-size: .8rem; color: #2563eb; text-decoration: none; }
+    .key-link:hover { text-decoration: underline; }
+    .modal .field { margin-bottom: .9rem; }
+    .modal .actions { margin-top: 1rem; }
+    .modal-status { margin-top: .75rem; font-size: .85rem; padding: .5rem .75rem; border-radius: 6px; display: none; }
+    .modal-status.ok { display: block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .modal-status.err { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .onboarding { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+    .onboarding h2 { border: none; color: #92400e; margin: 0 0 .25rem; padding: 0; }
+    .onboarding p { color: #78350f; font-size: .9rem; margin-bottom: 1rem; }
   </style>
 </head>
 <body>
-  <h1>BeanImporter</h1>
-  <p class="subtitle">Kaffeebohnen-Daten extrahieren und in Beanconqueror importieren</p>
+  <div class="header-row">
+    <div>
+      <h1>BeanImporter</h1>
+      <p class="subtitle">Kaffeebohnen-Daten extrahieren und in Beanconqueror importieren</p>
+    </div>
+    <button class="icon-btn" id="settingsBtn" onclick="openSettings()" title="Einstellungen" style="display:none">⚙</button>
+  </div>
+
+  <div id="onboarding" class="onboarding" style="display:none">
+    <h2>Willkommen bei BeanImporter</h2>
+    <p>Einmalig wird ein API-Key für ein LLM benötigt, das die Bohnendaten aus den Produktseiten extrahiert. Wähle einen Provider und gib deinen Key ein.</p>
+    <button class="btn-primary" onclick="openSettings(true)">Jetzt einrichten</button>
+  </div>
+
+  <div id="mainArea" style="display:none">
 
   <div class="url-row">
     <input type="url" id="url" placeholder="Produkt-URL eingeben…">
@@ -159,6 +195,39 @@
     </div>
   </div>
 
+  </div><!-- /#mainArea -->
+
+  <div id="settingsModal" class="modal-backdrop" onclick="if(event.target===this)closeSettings()">
+    <div class="modal">
+      <h2>LLM-Einstellungen</h2>
+      <p class="modal-sub">Wähle Provider und Modell und hinterlege deinen API-Key. Der Key wird lokal in <code>.env</code> gespeichert.</p>
+
+      <div class="provider-tabs" id="providerTabs"></div>
+
+      <div class="field">
+        <label>Modell</label>
+        <select id="settingsModel"></select>
+      </div>
+
+      <div class="field">
+        <label style="display:flex;justify-content:space-between;align-items:baseline">
+          <span>API-Key</span>
+          <a id="keyHelpLink" class="key-link" href="#" target="_blank" rel="noopener">Key holen →</a>
+        </label>
+        <input type="password" id="settingsKey" placeholder="sk-…" autocomplete="off">
+        <div id="keyHint" style="font-size:.75rem;color:#6b7280;margin-top:.25rem"></div>
+      </div>
+
+      <div id="settingsStatus" class="modal-status"></div>
+
+      <div class="actions" style="display:flex;gap:.5rem">
+        <button class="btn-add" onclick="closeSettings()">Abbrechen</button>
+        <button class="btn-primary" id="settingsTestBtn" onclick="doSettingsTest()" style="flex:0 0 auto">Testen</button>
+        <button class="btn-fill" id="settingsSaveBtn" onclick="doSettingsSave()">Speichern</button>
+      </div>
+    </div>
+  </div>
+
   <div id="qrArea" style="display:none;text-align:center;margin-top:1.5rem;padding:1.5rem;background:#fff;border:1px solid #e5e7eb;border-radius:8px">
     <h2 style="border:none;color:#1a1a1a;margin:0 0 .75rem">Import-QR für dein Handy</h2>
     <p style="color:#6b7280;font-size:.85rem;margin-bottom:1rem">Mit der Kamera scannen — Beanconqueror-App öffnet sich automatisch.</p>
@@ -171,6 +240,158 @@
 
   <script>
     let beanData = null;
+    let settingsState = null;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/settings');
+        settingsState = await res.json();
+      } catch (e) {
+        console.error('Settings konnten nicht geladen werden', e);
+        settingsState = { has_key: false, providers: {} };
+      }
+      applySettingsToUi();
+    }
+
+    function applySettingsToUi() {
+      const hasKey = !!settingsState.has_key;
+      document.getElementById('onboarding').style.display = hasKey ? 'none' : 'block';
+      document.getElementById('mainArea').style.display = hasKey ? 'block' : 'none';
+      document.getElementById('settingsBtn').style.display = hasKey ? 'inline-block' : 'none';
+    }
+
+    function openSettings(initial) {
+      if (!settingsState) return;
+      const tabs = document.getElementById('providerTabs');
+      tabs.innerHTML = '';
+      const providers = settingsState.providers || {};
+      const slugs = Object.keys(providers);
+      const initialProvider = settingsState.provider && providers[settingsState.provider]
+        ? settingsState.provider
+        : slugs[0];
+      slugs.forEach(slug => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = providers[slug].label;
+        btn.onclick = () => selectProvider(slug);
+        btn.dataset.slug = slug;
+        tabs.appendChild(btn);
+      });
+      selectProvider(initialProvider);
+      document.getElementById('settingsKey').value = '';
+      const hint = document.getElementById('keyHint');
+      if (settingsState.has_key && settingsState.key_masked) {
+        hint.textContent = `Aktueller Key: ${settingsState.key_masked} — leer lassen, um ihn beizubehalten.`;
+      } else {
+        hint.textContent = '';
+      }
+      setStatus('');
+      document.getElementById('settingsModal').classList.add('open');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('open');
+    }
+
+    function selectProvider(slug) {
+      const providers = settingsState.providers || {};
+      const p = providers[slug];
+      if (!p) return;
+      document.querySelectorAll('#providerTabs button').forEach(b => {
+        b.classList.toggle('active', b.dataset.slug === slug);
+      });
+      const sel = document.getElementById('settingsModel');
+      sel.innerHTML = '';
+      p.models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        sel.appendChild(opt);
+      });
+      const preferred = (settingsState.provider === slug && settingsState.model) || p.default_model;
+      sel.value = preferred && p.models.includes(preferred) ? preferred : p.models[0];
+      document.getElementById('keyHelpLink').href = p.key_url;
+
+      const hint = document.getElementById('keyHint');
+      const sameProvider = settingsState.provider === slug && settingsState.has_key;
+      if (sameProvider) {
+        hint.textContent = `Aktueller Key: ${settingsState.key_masked} — leer lassen, um ihn beizubehalten.`;
+      } else {
+        hint.textContent = 'Neuer Provider — Key erforderlich.';
+      }
+    }
+
+    function currentProviderSlug() {
+      const active = document.querySelector('#providerTabs button.active');
+      return active ? active.dataset.slug : null;
+    }
+
+    function setStatus(msg, kind) {
+      const el = document.getElementById('settingsStatus');
+      el.className = 'modal-status' + (kind ? ' ' + kind : '');
+      el.textContent = msg || '';
+    }
+
+    function settingsPayload() {
+      return {
+        provider: currentProviderSlug(),
+        model: document.getElementById('settingsModel').value,
+        api_key: document.getElementById('settingsKey').value.trim() || null,
+      };
+    }
+
+    async function doSettingsTest() {
+      const btn = document.getElementById('settingsTestBtn');
+      btn.disabled = true;
+      setStatus('Teste Key…');
+      try {
+        const res = await fetch('/settings/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settingsPayload()),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.detail || 'Test fehlgeschlagen.', 'err');
+        } else if (data.ok) {
+          setStatus('Verbindung OK — Modell hat geantwortet.', 'ok');
+        } else {
+          setStatus('Test fehlgeschlagen: ' + (data.message || 'unbekannter Fehler'), 'err');
+        }
+      } catch (e) {
+        setStatus('Test fehlgeschlagen: ' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function doSettingsSave() {
+      const btn = document.getElementById('settingsSaveBtn');
+      btn.disabled = true;
+      setStatus('Speichere…');
+      try {
+        const res = await fetch('/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settingsPayload()),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.detail || 'Speichern fehlgeschlagen.', 'err');
+          return;
+        }
+        settingsState = data;
+        setStatus('Gespeichert.', 'ok');
+        applySettingsToUi();
+        setTimeout(closeSettings, 600);
+      } catch (e) {
+        setStatus('Speichern fehlgeschlagen: ' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    loadSettings();
 
     async function doExtract() {
       const url = document.getElementById('url').value.trim();
