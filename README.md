@@ -7,7 +7,7 @@ Beanconqueror-App auf dem Handy).
 - **LLM-gestützt** (Anthropic / OpenAI / Gemini — wählbar im Browser, BYOK)
 - **Läuft komplett lokal** als FastAPI-Server auf `127.0.0.1:8000`
 - **Autostart** via Windows Scheduled Task — kein Terminal nötig
-- **Kein Playwright/Chromium**: Beanconqueror-Payload wird direkt als Protobuf erzeugt
+- **Schneller Beanconqueror-Export**: Payload wird direkt als Protobuf erzeugt (kein Browser-Roundtrip)
 
 ## Voraussetzungen
 
