@@ -6,5 +6,6 @@ lxml
 litellm
 pydantic
 python-dotenv
-duckduckgo-search
+ddgs
 protobuf
+playwright

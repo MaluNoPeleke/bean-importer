@@ -1,9 +1,10 @@
+from typing import Optional
 import logging
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 import httpx
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ async def fetch_page_text(url: str, max_chars: int = 8000) -> str:
         return ""
 
 
-async def research_coffee(product_name: str, shop_domain: str | None = None) -> str:
+async def research_coffee(product_name: str, shop_domain: Optional[str] = None) -> str:
     queries = [
         f'"{product_name}" Kaffee Röster Herkunft Varietät',
         f'"{product_name}" coffee espresso recipe brew ratio',

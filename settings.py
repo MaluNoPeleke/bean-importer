@@ -2,6 +2,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import Optional
 
 from dotenv import dotenv_values, set_key
 
@@ -51,7 +52,7 @@ def _ensure_env_file() -> None:
             ENV_PATH.write_text("", encoding="utf-8")
 
 
-def _provider_for_model(model: str) -> str | None:
+def _provider_for_model(model: str) -> Optional[str]:
     m = (model or "").lower()
     if m.startswith("anthropic/"):
         return "anthropic"
@@ -103,7 +104,7 @@ def read_settings() -> dict:
     }
 
 
-def write_settings(provider: str, model: str, api_key: str | None) -> None:
+def write_settings(provider: str, model: str, api_key: Optional[str]) -> None:
     """Persist to .env and update os.environ so the running process sees the change."""
     if provider not in PROVIDERS:
         raise ValueError(f"Unbekannter Provider: {provider}")

@@ -1,37 +1,41 @@
 # BeanImporter
 
-Lokale Web-App für Windows, die aus Kaffeeshop-URLs automatisch Bohnendaten extrahiert
+Lokale Web-App, die aus Kaffeeshop-URLs automatisch Bohnendaten extrahiert
 und sie als Beanconqueror-Import-Link aufbereitet (QR-Code zum Abscannen mit der
 Beanconqueror-App auf dem Handy).
 
 - **LLM-gestützt** (Anthropic / OpenAI / Gemini — wählbar im Browser, BYOK)
 - **Läuft komplett lokal** als FastAPI-Server auf `127.0.0.1:8000`
-- **Autostart** via Windows Scheduled Task — kein Terminal nötig
+- **Autostart** via launchd (macOS) oder systemd (Linux) — kein Terminal nötig
 - **Kein Playwright/Chromium**: Beanconqueror-Payload wird direkt als Protobuf erzeugt
+
+## Plattformen
+
+- **Windows**: Siehe [`install.ps1`](install.ps1)
+- **macOS / Linux**: Siehe [`install.sh`](install.sh)
 
 ## Voraussetzungen
 
-- Windows 10/11
-- [Python ≥ 3.12](https://www.python.org/downloads/) — beim Installieren **„Add Python to PATH"** aktivieren
+- Windows 10/11 **oder** macOS / Linux
+- [Python ≥ 3.9](https://www.python.org/downloads/) (≥ 3.12 empfohlen)
 - Ein API-Key für einen LLM-Provider:
   - [Anthropic](https://console.anthropic.com/settings/keys) (empfohlen)
   - [OpenAI](https://platform.openai.com/api-keys)
   - [Google Gemini](https://aistudio.google.com/apikey)
 
-## Installation
+## Installation (macOS / Linux)
 
 1. Repo klonen oder ZIP herunterladen und entpacken.
-2. PowerShell im Projektordner öffnen.
-3. Installer ausführen:
+2. Im Projektordner das Installationsskript ausführen:
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File install.ps1
+   ```bash
+   ./install.sh
    ```
 
    Der Installer prüft Python, installiert die Pakete, registriert den
-   Scheduled Task und öffnet den Browser.
+   LaunchAgent (macOS) bzw. systemd service (Linux) und öffnet den Browser.
 
-4. Im Browser im Onboarding-Dialog **Provider wählen** und **API-Key** eingeben →
+3. Im Browser im Onboarding-Dialog **Provider wählen** und **API-Key** eingeben →
    *Testen* → *Speichern*. Fertig.
 
 Ab jetzt läuft der Server bei jedem Login automatisch im Hintergrund. Erreichbar
@@ -46,27 +50,41 @@ unter <http://127.0.0.1:8000/>.
 
 ## Verwaltung
 
+### macOS / Linux
+
+| Aktion | Befehl |
+| --- | --- |
+| Server neustarten | `./start_unix.sh` |
+| Server stoppen | `pkill -f 'uvicorn main:app'` |
+| Provider/Key ändern | ⚙-Icon oben rechts in der Web-UI |
+| Deinstallieren | `./uninstall.sh` |
+| Logs ansehen | `logs/server.log` (vorherige Version: `logs/server.log.1`) |
+
+### Windows
+
 | Aktion | Befehl |
 | --- | --- |
 | Server neustarten | `Start-ScheduledTask -TaskName BeanImporter` |
 | Server stoppen | `Stop-ScheduledTask -TaskName BeanImporter` |
 | Provider/Key ändern | ⚙-Icon oben rechts in der Web-UI |
-| Deinstallieren (Task entfernen) | `powershell -ExecutionPolicy Bypass -File scripts\uninstall_task.ps1` |
-| Logs ansehen | `logs\server.log` (vorherige Version: `logs\server.log.1`) |
+| Deinstallieren | `powershell -ExecutionPolicy Bypass -File scripts/uninstall_task.ps1` |
+| Logs ansehen | `logs\server.log` |
 
 ## Troubleshooting
 
-- **„Server nicht erreichbar"** im Browser → Task wurde noch nicht gestartet:
-  `Start-ScheduledTask -TaskName BeanImporter`.
+- **„Server nicht erreichbar"** im Browser → Server wurde noch nicht gestartet:
+  - macOS/Linux: `./start_unix.sh`
+  - Windows: `Start-ScheduledTask -TaskName BeanImporter`
 - **Port 8000 belegt** → alten Prozess killen:
-  ```powershell
-  Get-NetTCPConnection -LocalPort 8000 -State Listen |
-      Select-Object -First 1 -ExpandProperty OwningProcess |
-      ForEach-Object { Stop-Process -Id $_ -Force }
-  Start-ScheduledTask -TaskName BeanImporter
-  ```
+  - macOS/Linux: `lsof -ti :8000 | xargs kill` oder `pkill -f 'uvicorn main:app'`
+  - Windows:
+    ```powershell
+    Get-NetTCPConnection -LocalPort 8000 -State Listen |
+        Select-Object -First 1 -ExpandProperty OwningProcess |
+        ForEach-Object { Stop-Process -Id $_ -Force }
+    ```
 - **Fehlerbanner „Einstellungen öffnen"** → Key ungültig oder abgelaufen, im Modal neuen Key hinterlegen.
-- **Cache-Probleme nach Code-Änderungen** → `__pycache__\` löschen und Server neu starten.
+- **Cache-Probleme nach Code-Änderungen** → `__pycache__/` löschen und Server neu starten.
 
 ## Architektur (kurz)
 

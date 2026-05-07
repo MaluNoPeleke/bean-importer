@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from bs4 import BeautifulSoup
 import httpx
 from playwright.async_api import async_playwright
@@ -16,7 +17,7 @@ CONTENT_TAGS = ["main", "article"]
 MIN_HTML_LENGTH = 500
 
 
-async def fetch_html(url: str) -> str | None:
+async def fetch_html(url: str) -> Optional[str]:
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
             resp = await client.get(url, headers={"User-Agent": USER_AGENT})
