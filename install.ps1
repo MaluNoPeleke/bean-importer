@@ -55,6 +55,9 @@ if ($LASTEXITCODE -ne 0) { Write-Host "[FEHLER] pip-Upgrade fehlgeschlagen." -Fo
 & $python -m pip install -r (Join-Path $projectRoot "requirements.txt")
 if ($LASTEXITCODE -ne 0) { Write-Host "[FEHLER] pip install fehlgeschlagen." -ForegroundColor Red; exit 1 }
 
+& $python -m playwright install chromium
+if ($LASTEXITCODE -ne 0) { Write-Host "[FEHLER] Chromium-Download fehlgeschlagen." -ForegroundColor Red; exit 1 }
+
 Write-Host "[OK] Pakete installiert." -ForegroundColor Green
 
 # --- 3. Scheduled Task registrieren -----------------------------------------

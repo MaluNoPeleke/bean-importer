@@ -26,4 +26,4 @@ fi
 BANNER="=== BeanImporter started $(date '+%Y-%m-%d %H:%M:%S') === python=$($PYTHON_CMD --version)"
 echo "$BANNER" > "$LOG_FILE"
 
-exec "$PYTHON_CMD" -m uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info 2>&1 | tee -a "$LOG_FILE"
+exec "$PYTHON_CMD" -m uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info >> "$LOG_FILE" 2>&1

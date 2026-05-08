@@ -1,7 +1,5 @@
 import logging
 
-from typing import Optional
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -35,7 +33,7 @@ class ExtractRequest(BaseModel):
 class SettingsRequest(BaseModel):
     provider: str
     model: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
 
 
 @app.get("/")

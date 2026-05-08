@@ -13,11 +13,14 @@ Beanconqueror-App auf dem Handy).
 
 - **Windows**: Siehe [`install.ps1`](install.ps1)
 - **macOS / Linux**: Siehe [`install.sh`](install.sh)
+  - macOS: getestet (von @MaluNoPeleke auf Tahoe)
+  - Linux: experimental, ungetestet — Bug-Reports willkommen
+
 
 ## Voraussetzungen
 
 - Windows 10/11 **oder** macOS / Linux
-- [Python ≥ 3.9](https://www.python.org/downloads/) (≥ 3.12 empfohlen)
+- [Python ≥ 3.12](https://www.python.org/downloads/)
 - Ein API-Key für einen LLM-Provider:
   - [Anthropic](https://console.anthropic.com/settings/keys) (empfohlen)
   - [OpenAI](https://platform.openai.com/api-keys)

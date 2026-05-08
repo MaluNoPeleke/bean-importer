@@ -25,14 +25,14 @@ echo ""
 PYTHON_CMD=""
 for candidate in python3 py; do
     if command -v "$candidate" &> /dev/null; then
-        VERSION=$("$candidate" --version 2>&1 | sed 's/.*Python \([0-9]*\.[0-9]*\).*/\1/')
-        if [[ -n "$VERSION" ]]; then
-            MAJOR="${VERSION%%.*}"
-            MINOR="${VERSION##*.}"
-            # Accept Python >= 3.9 (3.12 preferred but 3.9+ works for basic usage)
+        PYTHON_VERSION=$("$candidate" --version 2>&1 | sed 's/.*Python \([0-9]*\.[0-9]*\).*/\1/')
+        if [[ -n "$PYTHON_VERSION" ]]; then
+            MAJOR="${PYTHON_VERSION%%.*}"
+            MINOR="${PYTHON_VERSION##*.}"
+            # Accept Python >= 3.9 (3.12 preferred but 3.9+ works)
             if [[ $MAJOR -gt 3 ]] || [[ $MAJOR -eq 3 && $MINOR -ge 9 ]]; then
                 PYTHON_CMD="$candidate"
-                echo "[OK] Python gefunden: $($candidate --version) ($($candidate --version))"
+                echo "[OK] Python gefunden: $($candidate --version)"
                 break
             fi
         fi
@@ -52,7 +52,6 @@ echo ""
 echo "Installiere Python-Pakete (pip install -r requirements.txt) ..."
 "$PYTHON_CMD" -m pip install --upgrade pip
 "$PYTHON_CMD" -m pip install -r requirements.txt
-"$PYTHON_CMD" -m playwright install chromium
 
 echo "[OK] Pakete installiert."
 
@@ -88,19 +87,13 @@ if [[ "$(uname)" == "Darwin" ]]; then
         <key>SuccessfulExit</key>
         <false/>
     </dict>
-    <key>StandardOutPath</key>
-    <string>__LOG_PATH__</string>
-    <key>StandardErrorPath</key>
-    <string>__LOG_PATH__</string>
 </dict>
 </plist>
 PLIST_EOF
     
     SCRIPT_PATH="$PROJECT_ROOT/start_unix.sh"
-    LOG_PATH="$PROJECT_ROOT/logs/server.log"
     
     sed -i '' "s|__SCRIPT_PATH__|$SCRIPT_PATH|g" "$PLIST_FILE"
-    sed -i '' "s|__LOG_PATH__|$LOG_PATH|g" "$PLIST_FILE"
     
     launchctl unload "$PLIST_FILE" 2>/dev/null || true
     launchctl load "$PLIST_FILE"
@@ -111,28 +104,28 @@ elif [[ -f /etc/os-release ]] && grep -q "Linux" /etc/os-release; then
     echo ""
     echo "Registriere systemd service ..."
     
-    SERVICE_FILE="/etc/systemd/system/beanimporter.service"
+    mkdir -p "$HOME/.config/systemd/user"
+    SERVICE_FILE="$HOME/.config/systemd/user/beanimporter.service"
     
-    cat > "$SERVICE_FILE" << EOF
+    cat > "$SERVICE_FILE" << 'EOF'
 [Unit]
 Description=BeanImporter FastAPI Server
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=$PROJECT_ROOT
-ExecStart=$PROJECT_ROOT/start_unix.sh
-StandardOutput=append:$PROJECT_ROOT/logs/server.log
-StandardError=append:$PROJECT_ROOT/logs/server.log
+WorkingDirectory=PROJECT_ROOT
+ExecStart=PROJECT_ROOT/start_unix.sh
 Restart=on-failure
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 EOF
     
-    sudo systemctl daemon-reload
-    sudo systemctl enable beanimporter
-    sudo systemctl restart beanimporter
+    sed -i "s|PROJECT_ROOT|$PROJECT_ROOT|g" "$SERVICE_FILE"
+    
+    systemctl --user daemon-reload
+    systemctl --user enable beanimporter
+    systemctl --user restart beanimporter
     
     echo "[OK] systemd service installiert."
     
