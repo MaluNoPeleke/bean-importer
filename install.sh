@@ -2,7 +2,7 @@
 # BeanImporter — one-shot installer for Unix/macOS.
 #
 # What it does:
-#   1. Checks for Python >= 3.12
+#   1. Checks for Python >= 3.9
 #   2. Installs Python dependencies via pip
 #   3. Creates a launchd agent (macOS) or systemd service (Linux) for autostart
 #   4. Starts the server immediately

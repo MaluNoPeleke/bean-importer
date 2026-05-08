@@ -6,7 +6,7 @@ Beanconqueror-App auf dem Handy).
 
 - **LLM-gestützt** (Anthropic / OpenAI / Gemini — wählbar im Browser, BYOK)
 - **Läuft komplett lokal** als FastAPI-Server auf `127.0.0.1:8000`
-- **Autostart** via launchd (macOS) oder systemd (Linux) — kein Terminal nötig
+- **Autostart** via Windows Scheduled Task, launchd (macOS) oder systemd (Linux) — kein Terminal nötig
 - **Kein Playwright/Chromium**: Beanconqueror-Payload wird direkt als Protobuf erzeugt
 
 ## Plattformen
@@ -20,15 +20,31 @@ Beanconqueror-App auf dem Handy).
 ## Voraussetzungen
 
 - Windows 10/11 **oder** macOS / Linux
-- [Python ≥ 3.12](https://www.python.org/downloads/)
+- [Python ≥ 3.12](https://www.python.org/downloads/) — beim Installieren unter Windows **„Add Python to PATH"** aktivieren
 - Ein API-Key für einen LLM-Provider:
   - [Anthropic](https://console.anthropic.com/settings/keys) (empfohlen)
   - [OpenAI](https://platform.openai.com/api-keys)
   - [Google Gemini](https://aistudio.google.com/apikey)
 
+## Installation Windows
+
+1. Repo klonen oder ZIP herunterladen und entpacken.
+
+2. PowerShell im Projektordner öffnen.
+
+3. Installer ausführen:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File install.ps1
+   ```
+
+   Der Installer prüft Python, installiert die Pakete, registriert den
+   Scheduled Task und öffnet den Browser.
+
 ## Installation (macOS / Linux)
 
 1. Repo klonen oder ZIP herunterladen und entpacken.
+
 2. Im Projektordner das Installationsskript ausführen:
 
    ```bash
@@ -38,13 +54,12 @@ Beanconqueror-App auf dem Handy).
    Der Installer prüft Python, installiert die Pakete, registriert den
    LaunchAgent (macOS) bzw. systemd service (Linux) und öffnet den Browser.
 
-3. Im Browser im Onboarding-Dialog **Provider wählen** und **API-Key** eingeben →
-   *Testen* → *Speichern*. Fertig.
-
-Ab jetzt läuft der Server bei jedem Login automatisch im Hintergrund. Erreichbar
-unter <http://127.0.0.1:8000/>.
-
 ## Benutzung
+
+Ab jetzt läuft der Server bei jedem Login automatisch im Hintergrund. Erreichbar unter <http://127.0.0.1:8000/>.
+
+Beim ersten Start: Im Browser im Onboarding-Dialog **Provider wählen** und **API-Key** eingeben →
+*Testen* → *Speichern*. Fertig.
 
 1. URL einer Produktseite (Kaffeeröster) eingeben → **Extrahieren**.
 2. Daten prüfen / korrigieren.
@@ -70,8 +85,8 @@ unter <http://127.0.0.1:8000/>.
 | Server neustarten | `Start-ScheduledTask -TaskName BeanImporter` |
 | Server stoppen | `Stop-ScheduledTask -TaskName BeanImporter` |
 | Provider/Key ändern | ⚙-Icon oben rechts in der Web-UI |
-| Deinstallieren | `powershell -ExecutionPolicy Bypass -File scripts/uninstall_task.ps1` |
-| Logs ansehen | `logs\server.log` |
+| Deinstallieren (Task entfernen) | `powershell -ExecutionPolicy Bypass -File scripts/uninstall_task.ps1` |
+| Logs ansehen | `logs\server.log` (vorherige Version: `logs/server.log.1`) |
 
 ## Troubleshooting
 
